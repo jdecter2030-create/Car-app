@@ -1,0 +1,448 @@
+<title>Three-Car Garage</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: a phone-first single column — car status tags, reserve form, day timeline in three lanes, reservation list, late-fee tab. */
+:root{
+  --bg:#eceff2; --surface:#ffffff; --sunk:#f5f7f9; --ink:#1a2028; --muted:#5b6571; --line:#d3d9e0;
+  --accent:#0d6468; --accent-ink:#ffffff;
+  --bronco:#c2561c; --jeep:#58692a; --audi:#33568a;
+  --ok:#2a7a4b; --ok-bg:#e3f2e9; --warn:#9a6200; --warn-bg:#fbf0d9; --bad:#b0261c; --bad-bg:#fbe4e1;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111519; --surface:#1a1f26; --sunk:#151a20; --ink:#e7ebef; --muted:#98a2ad; --line:#2c333c;
+  --accent:#3fb3ad; --accent-ink:#0b1214;
+  --bronco:#e27b45; --jeep:#9db05a; --audi:#7ca2d8;
+  --ok:#6fcf97; --ok-bg:#16301f; --warn:#f0bd5a; --warn-bg:#33270f; --bad:#ff8f84; --bad-bg:#3a1814;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111519; --surface:#1a1f26; --sunk:#151a20; --ink:#e7ebef; --muted:#98a2ad; --line:#2c333c;
+  --accent:#3fb3ad; --accent-ink:#0b1214;
+  --bronco:#e27b45; --jeep:#9db05a; --audi:#7ca2d8;
+  --ok:#6fcf97; --ok-bg:#16301f; --warn:#f0bd5a; --warn-bg:#33270f; --bad:#ff8f84; --bad-bg:#3a1814;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:760px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--display);font-weight:700;letter-spacing:.01em;text-transform:uppercase;margin:0;text-wrap:balance}
+h1{font-size:2.3rem;line-height:1}
+h2{font-size:1.35rem;line-height:1.1}
+.sub{color:var(--muted);margin:6px 0 0}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync[data-s="live"] i{background:var(--ok)} .sync[data-s="local"] i,.sync[data-s="slow"] i{background:var(--warn)} .sync[data-s="err"] i{background:var(--bad)}
+section{display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hint{color:var(--muted);font-size:.85rem}
+
+/* car tags */
+.cars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.cars{grid-template-columns:1fr}}
+.car{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.car-top{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;color:#fff;background:var(--c)}
+.car-top b{font-family:var(--display);font-size:1.6rem;letter-spacing:.04em;text-transform:uppercase;line-height:1}
+.car-top button{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:8px;padding:5px 10px;font:600 .8rem var(--body);cursor:pointer}
+.car-top button:hover{background:rgba(255,255,255,.3)}
+.car-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pill{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-size:.78rem;font-weight:600;border-radius:999px;padding:3px 9px;letter-spacing:.02em}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.out{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.muted{background:var(--sunk);color:var(--muted)}
+.car-line{font-size:.88rem;color:var(--muted)} .car-line strong{color:var(--ink);font-weight:600}
+
+/* form */
+form.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span,.legend{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+input[type=text],input[type=datetime-local]{width:100%;font:500 1rem var(--body);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:11px 12px;min-height:46px}
+input:focus-visible,button:focus-visible,.pick label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.row2{grid-template-columns:1fr}}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pick input{position:absolute;opacity:0;pointer-events:none}
+.pick label{position:relative;border:2px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;font-family:var(--display);font-weight:700;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--sunk)}
+.pick label:has(input:checked){border-color:var(--c);color:#fff;background:var(--c)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:999px;padding:6px 12px;font:500 .85rem var(--body);cursor:pointer}
+.chip:hover{border-color:var(--accent)}
+.dur{font-size:.9rem;color:var(--muted)} .dur strong{color:var(--ink)}
+.agree{display:flex;gap:12px;align-items:flex-start;background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:12px;padding:14px;cursor:pointer}
+.agree input{width:22px;height:22px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+.agree p{margin:0;font-size:.92rem} .agree .fee{font-family:var(--display);font-weight:700;font-size:1.15rem;color:var(--warn)}
+.btn{font:600 1rem var(--body);border-radius:10px;padding:12px 18px;border:0;cursor:pointer;min-height:46px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.primary:disabled{opacity:.45;cursor:not-allowed}
+.err{color:var(--bad);font-size:.9rem;font-weight:500;margin:0}
+.err:empty{display:none}
+
+/* timeline */
+.daynav{display:flex;align-items:center;gap:8px}
+.daynav button{background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:8px;min-width:38px;height:36px;font:600 .9rem var(--body);cursor:pointer;padding:0 10px}
+.daynav strong{font-weight:600;min-width:120px;text-align:center}
+.tl-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;-webkit-overflow-scrolling:touch}
+.tl{min-width:720px;padding:10px 12px 12px;display:grid;grid-template-columns:70px 1fr;row-gap:8px}
+.tl-hours{position:relative;height:18px;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tl-hours span{position:absolute;transform:translateX(-50%);top:0}
+.tl-name{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:1.05rem;letter-spacing:.04em;display:flex;align-items:center;color:var(--c)}
+.lane{position:relative;height:46px;border-radius:8px;cursor:pointer;
+  background:repeating-linear-gradient(90deg,var(--sunk) 0 calc(100%/18 - 1px),var(--line) calc(100%/18 - 1px) calc(100%/18))}
+.lane:hover{outline:1px dashed var(--accent)}
+.blk{position:absolute;top:4px;bottom:4px;border-radius:6px;background:var(--c);color:#fff;font-size:.74rem;line-height:1.2;padding:4px 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:default;box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.blk.done{opacity:.45}
+.blk.late{outline:2px solid var(--bad);outline-offset:1px}
+.nowline{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--bad);border-radius:2px;pointer-events:none}
+
+/* lists */
+.list{display:flex;flex-direction:column;gap:8px}
+.res{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center}
+.res .dot{width:12px;height:12px;border-radius:50%;background:var(--c);grid-row:span 2}
+.res .who{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.res .who em{font-style:normal;color:var(--c);font-family:var(--display);font-size:1.05rem;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.res .when{grid-column:2;color:var(--muted);font-size:.86rem;font-variant-numeric:tabular-nums;min-width:0}
+.res .acts{grid-row:1/span 2;grid-column:3;display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.res .note{grid-column:2/span 2;font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+.mini{font:600 .8rem var(--body);border-radius:8px;padding:7px 10px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);cursor:pointer;white-space:nowrap}
+.mini.go{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mini.arm{background:var(--bad);border-color:var(--bad);color:#fff}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:18px;color:var(--muted);text-align:center;font-size:.92rem}
+
+/* fees */
+.fees{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fees table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.fees th,.fees td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);font-size:.9rem}
+.fees th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;background:var(--sunk)}
+.fees td.amt{text-align:right;font-weight:600}
+.fees tr:last-child td{border-bottom:0}
+.rule{font-size:.85rem;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;font-size:.9rem;max-width:calc(100% - 32px);z-index:20}
+@media (prefers-reduced-motion:no-preference){.toast{animation:pop .2s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Three-Car Garage</h1>
+      <p class="sub">Reserve the Bronco, Jeep or Audi before you take the keys.</p>
+    </div>
+    <span class="sync" id="sync" data-s="loading"><i></i><span>Connecting…</span></span>
+  </header>
+
+  <section aria-labelledby="h-now">
+    <h2 id="h-now">Right now</h2>
+    <div class="cars" id="cars"></div>
+  </section>
+
+  <section aria-labelledby="h-reserve" id="reserve">
+    <div class="sec-head"><h2 id="h-reserve">Reserve a car</h2><span class="hint">Late returns cost $15 per hour</span></div>
+    <form class="card" id="form" novalidate>
+      <div class="field">
+        <span class="legend" id="lg-car">Which car</span>
+        <div class="pick" role="radiogroup" aria-labelledby="lg-car" id="pick"></div>
+      </div>
+      <label class="field"><span>Your name</span>
+        <input type="text" id="f-name" autocomplete="given-name" placeholder="e.g. Sam" maxlength="40">
+      </label>
+      <div class="row2">
+        <label class="field"><span>Pick up</span><input type="datetime-local" id="f-start" step="900"></label>
+        <label class="field"><span>Back by</span><input type="datetime-local" id="f-end" step="900"></label>
+      </div>
+      <div class="field">
+        <span class="legend">How long</span>
+        <div class="chips" id="chips">
+          <button type="button" class="chip" data-h="1">1 hr</button>
+          <button type="button" class="chip" data-h="2">2 hrs</button>
+          <button type="button" class="chip" data-h="3">3 hrs</button>
+          <button type="button" class="chip" data-h="5">5 hrs</button>
+          <button type="button" class="chip" data-h="eod">Rest of the day</button>
+          <button type="button" class="chip" data-h="24">24 hrs</button>
+        </div>
+        <div class="dur" id="dur"></div>
+      </div>
+      <label class="field"><span>Where are you going? (optional)</span>
+        <input type="text" id="f-note" maxlength="80" placeholder="Practice, groceries, work…">
+      </label>
+      <label class="agree" for="f-agree">
+        <input type="checkbox" id="f-agree">
+        <p id="agree-text"></p>
+      </label>
+      <p class="err" id="f-err" role="alert"></p>
+      <button class="btn primary" type="submit" id="f-submit">Reserve</button>
+    </form>
+  </section>
+
+  <section aria-labelledby="h-day">
+    <div class="sec-head">
+      <h2 id="h-day">Schedule</h2>
+      <div class="daynav">
+        <button type="button" id="d-prev" aria-label="Previous day">‹</button>
+        <strong id="d-label"></strong>
+        <button type="button" id="d-next" aria-label="Next day">›</button>
+        <button type="button" id="d-today">Today</button>
+      </div>
+    </div>
+    <div class="tl-scroll"><div class="tl" id="tl"></div></div>
+    <span class="hint">Tap an empty spot in a lane to start a reservation at that time. Shows 6 AM to midnight.</span>
+  </section>
+
+  <section aria-labelledby="h-up">
+    <h2 id="h-up">Out now &amp; coming up</h2>
+    <div class="list" id="upcoming"></div>
+  </section>
+
+  <section aria-labelledby="h-fees">
+    <div class="sec-head"><h2 id="h-fees">Late fees</h2></div>
+    <p class="rule">Every hour, or part of an hour, past the "back by" time is $15. A car returned 10 minutes late is $15; 1 hour 20 minutes late is $30.</p>
+    <div id="fees"></div>
+  </section>
+
+  <section aria-labelledby="h-past">
+    <h2 id="h-past">Returned</h2>
+    <div class="list" id="past"></div>
+  </section>
+</div>
+<div id="toast-host"></div>
+
+<script>
+const CARS=[{id:'bronco',name:'Bronco'},{id:'jeep',name:'Jeep'},{id:'audi',name:'Audi'}];
+const CAR=Object.fromEntries(CARS.map(c=>[c.id,c]));
+const FEE=15, HOUR=3600000, DAY_START=6, DAY_HOURS=18;
+const $=s=>document.querySelector(s);
+let bookings=[], store=null, readOnly=false, viewDay=startOfDay(new Date()), armed=null, armTimer=null;
+
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function startOfDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
+const pad=n=>String(n).padStart(2,'0');
+const toInput=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtTime=d=>d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const fmtDay=d=>d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+function dayWord(d){const diff=Math.round((startOfDay(d)-startOfDay(new Date()))/86400000);return diff===0?'Today':diff===1?'Tomorrow':diff===-1?'Yesterday':fmtDay(d)}
+const fmtWhen=d=>dayWord(d)+' '+fmtTime(d);
+function fmtDur(ms){const m=Math.max(0,Math.round(ms/60000)),h=Math.floor(m/60),r=m%60;return [h?h+' hr'+(h>1?'s':''):'',r?r+' min':''].filter(Boolean).join(' ')||'0 min'}
+const money=n=>'$'+n.toLocaleString();
+function nextQuarter(){const d=new Date();d.setSeconds(0,0);d.setMinutes(Math.ceil((d.getMinutes()+1)/15)*15);return d}
+
+function lateInfo(b,now=Date.now()){
+  const end=+new Date(b.end), back=b.returnedAt?+new Date(b.returnedAt):now, late=back-end;
+  if(late<=0) return {late:0,hours:0,fee:0};
+  const hours=Math.ceil(late/HOUR); return {late,hours,fee:hours*FEE};
+}
+function statusOf(b,now=Date.now()){
+  if(b.returnedAt) return 'returned';
+  if(now<+new Date(b.start)) return 'upcoming';
+  if(now<=+new Date(b.end)) return 'out';
+  return 'late';
+}
+// a booking holds its car from start until it is returned (or its end time, whichever is later while unreturned)
+function heldUntil(b,now=Date.now()){ if(b.returnedAt) return +new Date(b.returnedAt); return Math.max(+new Date(b.end), now); }
+
+/* ---------- storage ---------- */
+function setSync(s,text){const el=$('#sync');el.dataset.s=s;el.lastElementChild.textContent=text}
+function toast(msg){const host=$('#toast-host');host.innerHTML='';const t=document.createElement('div');t.className='toast';t.textContent=msg;host.appendChild(t);setTimeout(()=>{if(t.parentNode)t.remove()},3200)}
+function writeErr(e){
+  if(e&&e.code==='invalid_argument'){readOnly=true;toast('You can view the schedule but not change it. Ask the owner to share it with you as a Contributor.');renderAll();}
+  else if(e&&e.code==='quota_exceeded') toast('The schedule is full. Delete some old reservations and try again.');
+  else toast('That didn’t save. Check your connection and try again.');
+}
+function useLocal(){
+  const KEY='garage-bookings';
+  const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return []}};
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(bookings))}catch(e){}};
+  bookings=load();
+  store={
+    add:async d=>{bookings.push({id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),...d});save();renderAll()},
+    update:async(id,d)=>{bookings=bookings.map(b=>b.id===id?{...b,...d}:b);save();renderAll()},
+    remove:async id=>{bookings=bookings.filter(b=>b.id!==id);save();renderAll()}
+  };
+  setSync('local','Saved on this device only');
+  renderAll();
+}
+async function connect(){
+  let db=null;
+  try{ if(window.claude&&window.claude.use) db=await window.claude.use('db'); }catch(e){}
+  if(!db){useLocal();return}
+  const col=db.collection('bookings');
+  store={
+    add:d=>col.doc().set(d),
+    update:(id,d)=>col.doc(id).update(d),
+    remove:id=>col.doc(id).delete()
+  };
+  let timer=setTimeout(()=>setSync('slow','Can’t reach the schedule yet'),10000);
+  col.onSnapshot(snap=>{
+    if(!snap.metadata.fromCache){clearTimeout(timer);setSync('live','Shared with the family')}
+    bookings=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderAll();
+  },err=>{clearTimeout(timer);setSync('err',err&&err.code==='revoked'?'Access changed':'Couldn’t load the schedule')});
+  try{const u=await window.claude.use('user');const ok=u&&await u.can('data.write');if(ok===false){readOnly=true;renderAll()}}catch(e){}
+}
+
+/* ---------- rendering ---------- */
+function active(){return bookings.filter(b=>!b.cancelled)}
+function renderCars(){
+  const now=Date.now();
+  $('#cars').innerHTML=CARS.map(c=>{
+    const mine=active().filter(b=>b.car===c.id);
+    const cur=mine.find(b=>['out','late'].includes(statusOf(b,now)));
+    const next=mine.filter(b=>statusOf(b,now)==='upcoming').sort((a,b)=>new Date(a.start)-new Date(b.start))[0];
+    let pill,line='';
+    if(cur){
+      const st=statusOf(cur,now);
+      if(st==='late'){const li=lateInfo(cur,now);pill=`<span class="pill bad">Late · ${money(li.fee)} so far</span>`;line=`<div class="car-line"><strong>${esc(cur.name)}</strong> was due back ${esc(fmtWhen(new Date(cur.end)))}</div>`}
+      else{pill=`<span class="pill out">Out</span>`;line=`<div class="car-line"><strong>${esc(cur.name)}</strong> has it · back by ${esc(fmtWhen(new Date(cur.end)))}</div>`}
+    }else pill=`<span class="pill ok">Available</span>`;
+    const nx=next?`<div class="car-line">Next: <strong>${esc(next.name)}</strong>, ${esc(fmtWhen(new Date(next.start)))}</div>`:(cur?'':`<div class="car-line">Nothing booked yet</div>`);
+    return `<article class="car" style="--c:var(--${c.id})"><div class="car-top"><b>${c.name}</b><button type="button" data-reserve="${c.id}">Reserve</button></div><div class="car-body">${pill}${line}${nx}</div></article>`;
+  }).join('');
+}
+function renderTimeline(){
+  const d0=+viewDay+DAY_START*HOUR, d1=d0+DAY_HOURS*HOUR, now=Date.now();
+  $('#d-label').textContent=dayWord(viewDay)==='Today'||dayWord(viewDay)==='Tomorrow'||dayWord(viewDay)==='Yesterday'?dayWord(viewDay)+' · '+fmtDay(viewDay):fmtDay(viewDay);
+  let hours='';
+  for(let h=0;h<=DAY_HOURS;h+=3){const hr=(DAY_START+h)%24;const lbl=hr===0?'12a':hr===12?'12p':hr>12?(hr-12)+'p':hr+'a';hours+=`<span style="left:${h/DAY_HOURS*100}%">${lbl}</span>`}
+  let html=`<div></div><div class="tl-hours">${hours}</div>`;
+  for(const c of CARS){
+    const blks=active().filter(b=>b.car===c.id).map(b=>{
+      const s=+new Date(b.start), e=heldUntil(b,now);
+      if(e<=d0||s>=d1) return '';
+      const L=(Math.max(s,d0)-d0)/(d1-d0)*100, W=(Math.min(e,d1)-Math.max(s,d0))/(d1-d0)*100;
+      const st=statusOf(b,now);
+      const title=`${b.name}: ${fmtTime(new Date(b.start))} – ${fmtTime(new Date(b.end))}${b.note?' · '+b.note:''}`;
+      return `<div class="blk ${st==='returned'?'done':''} ${st==='late'?'late':''}" style="left:${L}%;width:${W}%" title="${esc(title)}" data-blk>${esc(b.name)} ${esc(fmtTime(new Date(b.start)))}</div>`;
+    }).join('');
+    const nowl=(now>d0&&now<d1)?`<div class="nowline" style="left:${(now-d0)/(d1-d0)*100}%"></div>`:'';
+    html+=`<div class="tl-name" style="--c:var(--${c.id})">${c.name}</div><div class="lane" data-lane="${c.id}" style="--c:var(--${c.id})" aria-label="${c.name} lane">${blks}${nowl}</div>`;
+  }
+  $('#tl').innerHTML=html;
+}
+function resRow(b,now){
+  const st=statusOf(b,now), s=new Date(b.start), e=new Date(b.end);
+  let when=`${fmtWhen(s)} → ${dayWord(e)===dayWord(s)?fmtTime(e):fmtWhen(e)} · ${fmtDur(e-s)}`;
+  let acts='', badge='';
+  if(st==='upcoming'){badge='<span class="pill muted">Reserved</span>';acts=`<button class="mini go" data-act="back" data-id="${esc(b.id)}">Took it</button><button class="mini ${armed===b.id?'arm':''}" data-act="cancel" data-id="${esc(b.id)}">${armed===b.id?'Tap to confirm':'Cancel'}</button>`}
+  if(st==='out'){badge='<span class="pill out">Out now</span>';acts=`<button class="mini go" data-act="back" data-id="${esc(b.id)}">I’m back</button>`}
+  if(st==='late'){const li=lateInfo(b,now);badge=`<span class="pill bad">${li.hours} hr late · ${money(li.fee)}</span>`;acts=`<button class="mini go" data-act="back" data-id="${esc(b.id)}">I’m back</button>`}
+  if(readOnly) acts='';
+  const car=CAR[b.car]||{name:b.car,id:'accent'};
+  return `<div class="res" style="--c:var(--${car.id})"><span class="dot"></span><div class="who"><em>${esc(car.name)}</em>${esc(b.name)} ${badge}</div><div class="acts">${acts}</div><div class="when">${esc(when)}</div>${b.note?`<div class="note">${esc(b.note)}</div>`:''}</div>`;
+}
+function renderUpcoming(){
+  const now=Date.now();
+  const list=active().filter(b=>statusOf(b,now)!=='returned').sort((a,b)=>new Date(a.start)-new Date(b.start));
+  $('#upcoming').innerHTML=list.length?list.map(b=>resRow(b,now)).join(''):`<div class="empty">No reservations yet. Pick a car above to reserve the first one.</div>`;
+}
+function renderPast(){
+  const cutoff=Date.now()-21*86400000;
+  const list=active().filter(b=>b.returnedAt&&+new Date(b.returnedAt)>cutoff).sort((a,b)=>new Date(b.returnedAt)-new Date(a.returnedAt)).slice(0,15);
+  $('#past').innerHTML=list.length?list.map(b=>{
+    const car=CAR[b.car]||{name:b.car,id:'accent'}, r=new Date(b.returnedAt), fee=b.lateFee||0;
+    const tag=fee?`<span class="pill ${b.feePaid?'muted':'bad'}">${b.feePaid?'Paid':'Owes'} ${money(fee)}</span>`:'<span class="pill ok">On time</span>';
+    const act=fee&&!readOnly?`<button class="mini" data-act="paid" data-id="${esc(b.id)}">${b.feePaid?'Mark unpaid':'Mark paid'}</button>`:'';
+    return `<div class="res" style="--c:var(--${car.id})"><span class="dot"></span><div class="who"><em>${esc(car.name)}</em>${esc(b.name)} ${tag}</div><div class="acts">${act}</div><div class="when">Due ${esc(fmtWhen(new Date(b.end)))} · returned ${esc(fmtWhen(r))}</div></div>`;
+  }).join(''):`<div class="empty">Returned trips from the last three weeks show up here.</div>`;
+}
+function renderFees(){
+  const now=Date.now(), people={};
+  const key=n=>String(n||'').trim().toLowerCase();
+  for(const b of active()){
+    let owed=0, accruing=0;
+    if(b.returnedAt&&b.lateFee&&!b.feePaid) owed=b.lateFee;
+    else if(statusOf(b,now)==='late') accruing=lateInfo(b,now).fee;
+    if(!owed&&!accruing) continue;
+    const k=key(b.name); people[k]=people[k]||{name:b.name,owed:0,accruing:0,trips:0};
+    people[k].owed+=owed; people[k].accruing+=accruing; people[k].trips++;
+  }
+  const rows=Object.values(people).sort((a,b)=>(b.owed+b.accruing)-(a.owed+a.accruing));
+  $('#fees').innerHTML=rows.length?`<div class="fees"><table><thead><tr><th>Name</th><th>Late trips</th><th style="text-align:right">Owes</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.trips}${p.accruing?' · still out':''}</td><td class="amt">${money(p.owed+p.accruing)}${p.accruing?'<br><span class="hint">and counting</span>':''}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">Nobody owes anything. Keep it that way.</div>`;
+}
+function renderAll(){renderCars();renderTimeline();renderUpcoming();renderFees();renderPast();updateForm();
+  $('#f-submit').disabled=readOnly; if(readOnly) $('#f-err').textContent='You have view-only access, so you can’t reserve from here.';}
+
+/* ---------- form ---------- */
+$('#pick').innerHTML=CARS.map((c,i)=>`<label style="--c:var(--${c.id})"><input type="radio" name="car" value="${c.id}" ${i===0?'checked':''}>${c.name}</label>`).join('');
+function formCar(){const r=document.querySelector('input[name=car]:checked');return r?CAR[r.value]:null}
+function setTimes(start,hours){
+  $('#f-start').value=toInput(start);
+  let end;
+  if(hours==='eod'){end=new Date(start);end.setHours(22,0,0,0);if(end<=start)end=new Date(+start+2*HOUR)}
+  else end=new Date(+start+hours*HOUR);
+  $('#f-end').value=toInput(end);
+  updateForm();
+}
+function updateForm(){
+  const name=$('#f-name').value.trim()||'[your name]', car=formCar();
+  const s=new Date($('#f-start').value), e=new Date($('#f-end').value);
+  const ok=!isNaN(s)&&!isNaN(e)&&e>s;
+  $('#dur').innerHTML=ok?`Keeping it for <strong>${esc(fmtDur(e-s))}</strong> · back by <strong>${esc(fmtWhen(e))}</strong>`:'Pick a pick-up time and a back-by time.';
+  $('#agree-text').innerHTML=`<span class="fee">$15 per hour late.</span><br>I, <strong>${esc(name)}</strong>, agree to bring the ${esc(car?car.name:'car')} back by <strong>${ok?esc(fmtWhen(e)):'the time above'}</strong>, and to pay $15 for every hour, or part of an hour, that I’m late.`;
+}
+function remember(){try{const n=localStorage.getItem('garage-name');if(n)$('#f-name').value=n}catch(e){}}
+function overlap(car,s,e,now=Date.now()){
+  return active().find(b=>b.car===car&&!b.returnedAt&&s<heldUntil(b,now)&&e>+new Date(b.start))
+      || active().find(b=>b.car===car&&b.returnedAt&&s<+new Date(b.returnedAt)&&e>+new Date(b.start));
+}
+$('#form').addEventListener('input',e=>{if(e.target.id!=='f-agree'){$('#f-err').textContent=readOnly?$('#f-err').textContent:''}updateForm()});
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;let s=new Date($('#f-start').value);if(isNaN(s))s=nextQuarter();setTimes(s,b.dataset.h==='eod'?'eod':+b.dataset.h)});
+$('#form').addEventListener('submit',async e=>{
+  e.preventDefault(); if(readOnly||!store) return;
+  const err=$('#f-err'), name=$('#f-name').value.trim(), car=formCar();
+  const s=new Date($('#f-start').value), en=new Date($('#f-end').value), now=Date.now();
+  if(!car) return err.textContent='Pick a car.';
+  if(!name) return (err.textContent='Write your name so everyone knows who has the car.',$('#f-name').focus());
+  if(isNaN(s)||isNaN(en)) return err.textContent='Pick both a pick-up time and a back-by time.';
+  if(en<=s) return err.textContent='The back-by time has to be after the pick-up time.';
+  if(+en<now) return err.textContent='That back-by time has already passed. Pick a later one.';
+  if(+s<now-60*60000) return err.textContent='Pick-up can’t be more than an hour ago.';
+  const clash=overlap(car.id,+s,+en,now);
+  if(clash) return err.textContent=`The ${car.name} is already taken by ${clash.name} (${fmtWhen(new Date(clash.start))} to ${fmtWhen(new Date(clash.end))}). Try another time or car.`;
+  if(!$('#f-agree').checked) return err.textContent='Tick the box to agree to the $15-per-hour late fee.';
+  const agreedText=`I, ${name}, agree to bring the ${car.name} back by ${en.toLocaleString()} and to pay $15 for every hour, or part of an hour, that I'm late.`;
+  const data={car:car.id,name,start:s.toISOString(),end:en.toISOString(),note:$('#f-note').value.trim(),agreedLateFee:true,feePerHour:FEE,agreedText,agreedAt:new Date().toISOString(),createdAt:new Date().toISOString()};
+  $('#f-submit').disabled=true;
+  try{await store.add(data);try{localStorage.setItem('garage-name',name)}catch(_){}
+    toast(`${car.name} reserved for ${name}.`);$('#f-agree').checked=false;$('#f-note').value='';setTimes(nextQuarter(),2);
+  }catch(x){writeErr(x)}finally{$('#f-submit').disabled=readOnly}
+});
+
+/* ---------- actions ---------- */
+function goReserve(carId,start){
+  const r=document.querySelector(`input[name=car][value="${carId}"]`); if(r) r.checked=true;
+  if(start) setTimes(start,2); else updateForm();
+  $('#reserve').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+  setTimeout(()=>{ if(!$('#f-name').value) $('#f-name').focus({preventScroll:true}) },350);
+}
+document.addEventListener('click',async e=>{
+  const rb=e.target.closest('[data-reserve]'); if(rb) return goReserve(rb.dataset.reserve);
+  const lane=e.target.closest('[data-lane]');
+  if(lane&&!e.target.closest('[data-blk]')){
+    const r=lane.getBoundingClientRect(), frac=Math.min(.999,Math.max(0,(e.clientX-r.left)/r.width));
+    const mins=Math.floor(frac*DAY_HOURS*4)*15; const st=new Date(+viewDay+DAY_START*HOUR+mins*60000);
+    return goReserve(lane.dataset.lane, st<new Date()?nextQuarter():st);
+  }
+  const a=e.target.closest('[data-act]'); if(!a||readOnly||!store) return;
+  const b=bookings.find(x=>x.id===a.dataset.id); if(!b) return;
+  try{
+    if(a.dataset.act==='back'){
+      const st=statusOf(b);
+      if(st==='upcoming'){await store.update(b.id,{start:new Date().toISOString()});toast(`Enjoy the ${CAR[b.car].name}. Back by ${fmtTime(new Date(b.end))}.`);return}
+      const nowIso=new Date().toISOString(), li=lateInfo({...b,returnedAt:nowIso});
+      await store.update(b.id,{returnedAt:nowIso,lateHours:li.hours,lateFee:li.fee,feePaid:false});
+      toast(li.fee?`Returned ${li.hours} hr late. ${b.name} owes ${money(li.fee)}.`:'Returned on time. Thanks!');
+    }else if(a.dataset.act==='cancel'){
+      if(armed!==b.id){armed=b.id;clearTimeout(armTimer);armTimer=setTimeout(()=>{armed=null;renderUpcoming()},4000);renderUpcoming();return}
+      armed=null;await store.remove(b.id);toast('Reservation cancelled.');
+    }else if(a.dataset.act==='paid'){
+      await store.update(b.id,{feePaid:!b.feePaid});
+    }
+  }catch(x){writeErr(x)}
+});
+$('#d-prev').onclick=()=>{viewDay=new Date(+viewDay-86400000);viewDay=startOfDay(viewDay);renderTimeline()};
+$('#d-next').onclick=()=>{viewDay=startOfDay(new Date(+viewDay+86400000+3*HOUR));renderTimeline()};
+$('#d-today').onclick=()=>{viewDay=startOfDay(new Date());renderTimeline()};
+
+remember(); setTimes(nextQuarter(),2); renderAll();
+$('#upcoming').innerHTML='<div class="empty">Loading reservations…</div>';
+setInterval(renderAll,30000);
+connect();
+</script>
